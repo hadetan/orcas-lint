@@ -9,5 +9,6 @@ export const SKIP_REASONS = [
   'beyond-depth-budget',
   'unanalyzable-construct',
   'unrecognized-config',
+  'unresolved-specifier',
   'budget-exceeded',
 ] as const satisfies readonly SkipReason[];

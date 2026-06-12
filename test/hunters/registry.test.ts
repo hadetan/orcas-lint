@@ -4,7 +4,19 @@ import { createEcho } from '../../src/echo';
 import { createRegistry } from '../../src/hunters';
 import type { Hunter, HunterContext } from '../../src/hunters';
 import { createBudget } from '../../src/pod/budget';
+import type { SemanticModel } from '../../src/sonar';
 import type { Finding, Skip } from '../../src/types';
+
+const stubSonar: SemanticModel = {
+  files: () => [],
+  module: () => undefined,
+  resolve: () => null,
+  entryPoints: () => new Set(),
+  isReachable: () => false,
+  isTest: () => false,
+  importersOf: () => [],
+  hasDynamicImport: () => false,
+};
 
 function context(): HunterContext {
   return {
@@ -13,6 +25,7 @@ function context(): HunterContext {
     config: defaultConfig(),
     budget: createBudget(),
     echo: createEcho(),
+    sonar: stubSonar,
   };
 }
 

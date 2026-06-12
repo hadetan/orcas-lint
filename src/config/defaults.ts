@@ -18,6 +18,13 @@ export function defaultConfig(): OrcasConfig {
     project: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
     entry: [],
     ignore: ['**/node_modules/**', '**/dist/**', '**/*.d.ts'],
+    tests: [
+      '**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}',
+      '**/__tests__/**',
+      '**/__mocks__/**',
+      '**/test/**',
+      '**/tests/**',
+    ],
     rules: { ...DEFAULT_SEVERITIES },
     trace: { depth: DEFAULT_TRACE_DEPTH },
     production: false,

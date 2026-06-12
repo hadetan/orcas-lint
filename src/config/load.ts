@@ -31,6 +31,7 @@ function mergeConfig(base: OrcasConfig, user: UserConfig, options: AnalyzeOption
     project: user.project ?? base.project,
     entry: user.entry ?? base.entry,
     ignore: user.ignore ?? base.ignore,
+    tests: user.tests ?? base.tests,
     rules,
     trace: { depth: options.traceDepth ?? user.trace?.depth ?? base.trace.depth },
     production: options.production ?? user.production ?? base.production,

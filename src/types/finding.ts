@@ -11,13 +11,13 @@ export interface Finding {
   rule: RuleId;
   severity: Severity;
   message: string;
-  /** Optional access-path or symbol the finding refers to (e.g. `config.retry.backoff`). */
+  /** Optional access-path or symbol the finding refers to, such as `config.retry.backoff`. */
   path?: string;
   location: SourceLocation;
   certainty: Certainty;
 }
 
-/** Enumerated reasons the engine backed off rather than report — surfaced via Echo. */
+/** Enumerated reasons the engine backed off rather than report. Surfaced via Echo. */
 export type SkipReason =
   | 'container-spread'
   | 'container-serialized'
@@ -26,9 +26,10 @@ export type SkipReason =
   | 'beyond-depth-budget'
   | 'unanalyzable-construct'
   | 'unrecognized-config'
+  | 'unresolved-specifier'
   | 'budget-exceeded';
 
-/** Something the engine could not prove dead. Recorded, not reported (unless `--debug`). */
+/** Something the engine could not prove dead. Recorded, not reported unless `--debug`. */
 export interface Skip {
   rule: RuleId;
   reason: SkipReason;
