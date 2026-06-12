@@ -1,14 +1,293 @@
-/** The result of parsing a single source file. */
-export interface ParsedModule {
-  readonly file: string;
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { Project, ts, type Identifier, type Node, type SourceFile } from 'ts-morph';
+import type { SourceLocation } from '../types';
+import type { ExportRecord, ImportBinding } from './model';
+
+/** An import binding before its specifier has been resolved. */
+export type RawImport = Omit<ImportBinding, 'resolvedFile'>;
+/** An export record before its re-export target has been resolved. */
+export type RawExport = Omit<ExportRecord, 'resolvedReexport'>;
+
+/**
+ * Create a ts-morph project for `cwd`. Uses the project's `tsconfig.json` when
+ * present. Files are added explicitly by the caller.
+ */
+export function createProject(cwd: string): Project {
+  const tsConfigFilePath = join(cwd, 'tsconfig.json');
+  const hasTsconfig = existsSync(tsConfigFilePath);
+  return new Project({
+    ...(hasTsconfig ? { tsConfigFilePath } : {}),
+    skipAddingFilesFromTsConfig: true,
+    compilerOptions: {
+      allowJs: true,
+      noEmit: true,
+      ...(hasTsconfig
+        ? {}
+        : {
+            jsx: ts.JsxEmit.Preserve,
+            target: ts.ScriptTarget.ES2022,
+            module: ts.ModuleKind.ESNext,
+            moduleResolution: ts.ModuleResolutionKind.Bundler,
+          }),
+    },
+  });
 }
 
-/** Parses source files into {@link ParsedModule} values. */
-export interface Parser {
-  parse(file: string): ParsedModule;
+/**
+ * The import identifiers that, when JSX is present, must be treated as used,
+ * the JSX factory roots. Under the *classic* runtime JSX desugars to
+ * `React.createElement`, so that import is used implicitly. Under the
+ * *automatic* runtime no factory import is needed, so the set is empty, and a
+ * stray `import React` is then correctly reportable.
+ */
+export function jsxFactoryRoots(options: ts.CompilerOptions): Set<string> {
+  const jsx = options.jsx;
+  const automatic = jsx === ts.JsxEmit.ReactJSX || jsx === ts.JsxEmit.ReactJSXDev;
+  if (automatic) return new Set();
+  const roots = new Set<string>(['React']);
+  if (options.jsxFactory) roots.add(options.jsxFactory.split('.')[0] ?? 'React');
+  if (options.jsxFragmentFactory) roots.add(options.jsxFragmentFactory.split('.')[0] ?? 'React');
+  return roots;
 }
 
-/** Creates a {@link Parser}. */
-export function createParser(): Parser {
-  return { parse: (file) => ({ file }) };
+function hasJsx(sf: SourceFile): boolean {
+  return (
+    sf.getFirstDescendantByKind(ts.SyntaxKind.JsxElement) !== undefined ||
+    sf.getFirstDescendantByKind(ts.SyntaxKind.JsxSelfClosingElement) !== undefined ||
+    sf.getFirstDescendantByKind(ts.SyntaxKind.JsxFragment) !== undefined
+  );
+}
+
+function locAt(sf: SourceFile, relFile: string, pos: number): SourceLocation {
+  const { line, column } = sf.getLineAndColumnAtPos(pos);
+  return { file: relFile, line, column };
+}
+
+function locOf(sf: SourceFile, relFile: string, node: Node): SourceLocation {
+  return locAt(sf, relFile, node.getStart());
+}
+
+/**
+ * Count in-module usages of an import binding, excluding the binding site itself.
+ * Returns 1 when references cannot be determined, biasing toward "used" so a dead
+ * import is never wrongly flagged.
+ */
+function countReferences(nameNode: Identifier, declStart: number, declEnd: number): number {
+  let refs: Node[];
+  try {
+    refs = nameNode.findReferencesAsNodes();
+  } catch {
+    return 1;
+  }
+  const file = nameNode.getSourceFile();
+  let count = 0;
+  for (const r of refs) {
+    if (r.getSourceFile() !== file) continue;
+    const start = r.getStart();
+    if (start >= declStart && start < declEnd) continue;
+    count += 1;
+  }
+  return count;
+}
+
+const NO_FACTORIES: ReadonlySet<string> = new Set();
+
+/**
+ * Extract every import binding from a module, with in-module reference counts.
+ * When the module contains JSX, an import whose local name is a JSX factory root
+ * is treated as used even with no explicit reference.
+ * See {@link jsxFactoryRoots}.
+ */
+export function extractImports(
+  sf: SourceFile,
+  relFile: string,
+  jsxFactories: ReadonlySet<string> = NO_FACTORIES,
+): RawImport[] {
+  const out: RawImport[] = [];
+  const jsx = jsxFactories.size > 0 && hasJsx(sf);
+  const refsFor = (node: Identifier, name: string, declStart: number, declEnd: number): number => {
+    const count = countReferences(node, declStart, declEnd);
+    return jsx && jsxFactories.has(name) ? Math.max(count, 1) : count;
+  };
+
+  for (const decl of sf.getImportDeclarations()) {
+    const specifier = decl.getModuleSpecifierValue();
+    const declTypeOnly = decl.isTypeOnly();
+    const declStart = decl.getStart();
+    const declEnd = decl.getEnd();
+
+    const clause = decl.getImportClause();
+    if (!clause) {
+      out.push({
+        localName: '',
+        specifier,
+        kind: 'side-effect',
+        isTypeOnly: false,
+        references: 0,
+        loc: locOf(sf, relFile, decl),
+      });
+      continue;
+    }
+
+    const def = decl.getDefaultImport();
+    if (def) {
+      out.push({
+        localName: def.getText(),
+        specifier,
+        kind: 'default',
+        importedName: 'default',
+        isTypeOnly: declTypeOnly,
+        references: refsFor(def, def.getText(), declStart, declEnd),
+        loc: locOf(sf, relFile, def),
+      });
+    }
+
+    const ns = decl.getNamespaceImport();
+    if (ns) {
+      out.push({
+        localName: ns.getText(),
+        specifier,
+        kind: 'namespace',
+        isTypeOnly: declTypeOnly,
+        references: refsFor(ns, ns.getText(), declStart, declEnd),
+        loc: locOf(sf, relFile, ns),
+      });
+    }
+
+    for (const spec of decl.getNamedImports()) {
+      const nameNode = spec.getNameNode();
+      const local = spec.getAliasNode() ?? nameNode;
+      const localId = local.asKind(ts.SyntaxKind.Identifier);
+      out.push({
+        localName: local.getText(),
+        specifier,
+        kind: 'named',
+        importedName: nameNode.getText(),
+        isTypeOnly: declTypeOnly || spec.isTypeOnly(),
+        references: localId ? refsFor(localId, local.getText(), declStart, declEnd) : 1,
+        loc: locOf(sf, relFile, local),
+      });
+    }
+  }
+  return out;
+}
+
+interface ExportableLike {
+  hasExportKeyword(): boolean;
+  isDefaultExport(): boolean;
+  getName(): string | undefined;
+  getNameNode(): Node | undefined;
+  getStart(): number;
+}
+
+function pushExportable(
+  sf: SourceFile,
+  relFile: string,
+  node: ExportableLike,
+  isTypeOnly: boolean,
+  out: RawExport[],
+): void {
+  if (!node.hasExportKeyword()) return;
+  const pos = node.getNameNode()?.getStart() ?? node.getStart();
+  if (node.isDefaultExport()) {
+    out.push({
+      exportedName: 'default',
+      localName: node.getName(),
+      kind: 'default',
+      isTypeOnly,
+      loc: locAt(sf, relFile, pos),
+    });
+    return;
+  }
+  const name = node.getName();
+  if (!name) return;
+  out.push({ exportedName: name, localName: name, kind: 'named', isTypeOnly, loc: locAt(sf, relFile, pos) });
+}
+
+/** Extract every export a module declares, distinguishing local exports from re-exports. */
+export function extractExports(sf: SourceFile, relFile: string): RawExport[] {
+  const out: RawExport[] = [];
+
+  for (const decl of sf.getExportDeclarations()) {
+    const from = decl.getModuleSpecifierValue();
+    const declTypeOnly = decl.isTypeOnly();
+    const nsExport = decl.getNamespaceExport();
+    const named = decl.getNamedExports();
+
+    if (from && named.length === 0 && !nsExport) {
+      out.push({
+        exportedName: '*',
+        kind: 'star-reexport',
+        reexportFrom: from,
+        isTypeOnly: declTypeOnly,
+        loc: locOf(sf, relFile, decl),
+      });
+      continue;
+    }
+    if (from && nsExport) {
+      out.push({
+        exportedName: nsExport.getName(),
+        localName: '*',
+        kind: 'star-reexport',
+        reexportFrom: from,
+        isTypeOnly: declTypeOnly,
+        loc: locOf(sf, relFile, nsExport),
+      });
+      continue;
+    }
+    for (const spec of named) {
+      const name = spec.getNameNode().getText();
+      const alias = spec.getAliasNode()?.getText();
+      out.push({
+        exportedName: alias ?? name,
+        localName: name,
+        kind: from ? 'named-reexport' : 'named',
+        ...(from ? { reexportFrom: from } : {}),
+        isTypeOnly: declTypeOnly || spec.isTypeOnly(),
+        loc: locOf(sf, relFile, spec.getNameNode()),
+      });
+    }
+  }
+
+  for (const ea of sf.getExportAssignments()) {
+    if (ea.isExportEquals()) continue;
+    out.push({ exportedName: 'default', kind: 'default', isTypeOnly: false, loc: locOf(sf, relFile, ea) });
+  }
+
+  for (const vs of sf.getVariableStatements()) {
+    if (!vs.hasExportKeyword()) continue;
+    for (const d of vs.getDeclarations()) {
+      const name = d.getName();
+      if (!name) continue;
+      out.push({
+        exportedName: name,
+        localName: name,
+        kind: 'named',
+        isTypeOnly: false,
+        loc: locOf(sf, relFile, d.getNameNode()),
+      });
+    }
+  }
+  for (const fn of sf.getFunctions()) pushExportable(sf, relFile, fn, false, out);
+  for (const cls of sf.getClasses()) pushExportable(sf, relFile, cls, false, out);
+  for (const en of sf.getEnums()) pushExportable(sf, relFile, en, false, out);
+  for (const it of sf.getInterfaces()) pushExportable(sf, relFile, it, true, out);
+  for (const ta of sf.getTypeAliases()) pushExportable(sf, relFile, ta, true, out);
+
+  return out;
+}
+
+/** Whether the module performs a dynamic `import()` with a non-literal specifier. */
+export function detectDynamicImport(sf: SourceFile): boolean {
+  for (const call of sf.getDescendantsOfKind(ts.SyntaxKind.CallExpression)) {
+    if (call.getExpression().getKind() !== ts.SyntaxKind.ImportKeyword) continue;
+    const arg = call.getArguments()[0];
+    if (!arg) return true;
+    const literal =
+      arg.asKind(ts.SyntaxKind.StringLiteral) ??
+      arg.asKind(ts.SyntaxKind.NoSubstitutionTemplateLiteral);
+    if (!literal) return true;
+  }
+  return false;
 }

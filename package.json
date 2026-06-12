@@ -90,7 +90,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "lint": "oxlint",
-    "selfcheck": "npm run build && node ./bin/orcas.mjs ./src",
+    "selfcheck": "npm run build && node ./bin/orcas.mjs --debug",
     "prepublishOnly": "npm run build && npm test && publint"
   },
   "dependencies": {

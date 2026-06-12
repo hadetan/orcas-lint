@@ -1,9 +1,10 @@
+import { defaultHunters } from './hunters';
 import { runPipeline } from './pod';
 import type { AnalyzeOptions, AnalyzeResult } from './types';
 
 /** Run Orcas over a project and return findings, skips, and stats. */
 export async function analyze(options: AnalyzeOptions = {}): Promise<AnalyzeResult> {
-  return runPipeline(options);
+  return runPipeline(options, { hunters: defaultHunters() });
 }
 
 export { defineConfig } from './config';

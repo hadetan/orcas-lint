@@ -1,15 +1,16 @@
 import type { ReporterName, RuleId, Severity } from './severity';
 
 export interface TraceConfig {
-  /** Interprocedural depth budget (calls followed before bailing to "consumed"). */
+  /** Interprocedural depth budget: calls followed before bailing to "consumed". */
   depth: number;
 }
 
-/** Fully-resolved configuration (defaults merged with user config). */
+/** Fully-resolved configuration: defaults merged with user config. */
 export interface OrcasConfig {
   project: string[];
   entry: string[];
   ignore: string[];
+  tests: string[];
   rules: Record<RuleId, Severity>;
   trace: TraceConfig;
   production: boolean;

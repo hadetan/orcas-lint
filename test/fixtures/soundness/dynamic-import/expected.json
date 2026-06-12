@@ -1,0 +1,16 @@
+{
+  "findings": [],
+  "skips": [
+    {
+      "rule": "dead-export",
+      "reason": "dynamic-access",
+      "message": "'maybeUsed' may be consumed by a non-literal dynamic import",
+      "path": "maybeUsed",
+      "location": {
+        "file": "orphan.ts",
+        "line": 1,
+        "column": 14
+      }
+    }
+  ]
+}

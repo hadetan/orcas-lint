@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "rule": "dead-import",
+      "severity": "error",
+      "message": "'lib' is imported but never used",
+      "path": "lib",
+      "location": {
+        "file": "input.ts",
+        "line": 1,
+        "column": 8
+      },
+      "certainty": "certain"
+    },
+    {
+      "rule": "dead-import",
+      "severity": "error",
+      "message": "'a' is imported but never used",
+      "path": "a",
+      "location": {
+        "file": "input.ts",
+        "line": 2,
+        "column": 10
+      },
+      "certainty": "certain"
+    },
+    {
+      "rule": "dead-import",
+      "severity": "error",
+      "message": "'ns' is imported but never used",
+      "path": "ns",
+      "location": {
+        "file": "input.ts",
+        "line": 3,
+        "column": 13
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

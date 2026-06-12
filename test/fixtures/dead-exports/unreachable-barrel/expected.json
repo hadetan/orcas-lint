@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "rule": "dead-export",
+      "severity": "error",
+      "message": "'x' is exported but never used",
+      "path": "x",
+      "location": {
+        "file": "impl.ts",
+        "line": 1,
+        "column": 14
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

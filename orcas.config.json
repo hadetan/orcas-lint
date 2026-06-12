@@ -1,0 +1,9 @@
+{
+  "project": ["src/**/*.{ts,tsx}"],
+  "entry": ["src/index.ts", "src/cli/index.ts"],
+  "ignore": ["**/*.d.ts"],
+  "rules": {
+    "dead-import": "error",
+    "dead-export": "error"
+  }
+}

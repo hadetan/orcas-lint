@@ -1,0 +1,15 @@
+{
+  "findings": [],
+  "skips": [
+    {
+      "rule": "dead-export",
+      "reason": "unresolved-specifier",
+      "message": "'./missing' is re-exported to a target outside the analyzed project",
+      "location": {
+        "file": "input.ts",
+        "line": 1,
+        "column": 10
+      }
+    }
+  ]
+}
