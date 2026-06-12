@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { relative, resolve as resolvePath } from 'node:path';
+import type { Budget } from '../pod/budget';
 import type { OrcasConfig } from '../types';
 import { deriveEntryPoints } from './entry-points';
 import type { Manifest } from './manifest';
@@ -23,6 +24,8 @@ export interface SemanticModelInput {
   /** The subset of `files` that are test files, read as consumers, never reported on. */
   testFiles: ReadonlySet<string>;
   manifest: Manifest;
+  /** Run budget. When the wall-clock is exceeded, model construction stops early. */
+  budget?: Budget;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface SemanticModelInput {
  * reachability. The result is frozen data + pure query closures.
  */
 export async function createSemanticModel(input: SemanticModelInput): Promise<SemanticModel> {
-  const { cwd, config, files, testFiles, manifest } = input;
+  const { cwd, config, files, testFiles, manifest, budget } = input;
   const fileSet = new Set(files);
 
   const absToRel = new Map<string, string>();
@@ -62,6 +65,7 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
   const jsxFactories = jsxFactoryRoots(project.getCompilerOptions());
 
   for (const rel of files) {
+    if (budget?.timeExceeded()) break;
     try {
       project.addSourceFileAtPath(resolvePath(cwd, rel));
     } catch {
@@ -74,6 +78,7 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
   let dynamicImport = false;
 
   for (const rel of files) {
+    if (budget?.timeExceeded()) break;
     const abs = resolvePath(cwd, rel);
     const sf = project.getSourceFile(abs);
     if (!sf) continue;

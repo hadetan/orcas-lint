@@ -3,10 +3,17 @@ import type { ExportRecord } from '../sonar';
 import type { Finding, Skip, SkipReason } from '../types';
 import type { Hunter, HunterContext, HunterResult } from './base';
 
-/** A `* from` re-export to a target Sonar could not place in the project. */
-function unresolvedStar(mod: { exports: readonly ExportRecord[] }): ExportRecord | undefined {
+/**
+ * A re-export — `* from` or named `{ x } from`, whose target Sonar could not
+ * place in the project. Either kind hides what the module truly re-exports, so
+ * we cannot prove its other exports are unconsumed and back the whole module off
+ * to a skip.
+ */
+function unresolvedReexport(mod: { exports: readonly ExportRecord[] }): ExportRecord | undefined {
   return mod.exports.find(
-    (exp) => exp.kind === 'star-reexport' && (exp.resolvedReexport ?? null) === null,
+    (exp) =>
+      (exp.kind === 'star-reexport' || exp.kind === 'named-reexport') &&
+      (exp.resolvedReexport ?? null) === null,
   );
 }
 
@@ -32,16 +39,16 @@ export const deadExports: Hunter = {
       if (!mod) continue;
       if (ctx.sonar.isReachable(file)) continue;
 
-      const star = unresolvedStar(mod);
-      if (star) {
-        const reason: SkipReason = (star.reexportFrom ?? '').startsWith('.')
+      const unresolved = unresolvedReexport(mod);
+      if (unresolved) {
+        const reason: SkipReason = (unresolved.reexportFrom ?? '').startsWith('.')
           ? 'unresolved-specifier'
           : 'escapes-boundary';
         skips.push({
           rule: 'dead-export',
           reason,
-          message: MESSAGES.skipReexportBoundary(star.reexportFrom ?? '*'),
-          location: star.loc,
+          message: MESSAGES.skipReexportBoundary(unresolved.reexportFrom ?? '*'),
+          location: unresolved.loc,
         });
         continue;
       }

@@ -14,4 +14,8 @@ describe('soundness corpus (skip, never flag)', () => {
   it('skips when a re-export targets a module outside the analyzed project', async () => {
     await runFixture(join(soundness, 'reexport-boundary'));
   });
+
+  it('skips when a named re-export targets a module outside the analyzed project', async () => {
+    await runFixture(join(soundness, 'reexport-named-boundary'));
+  });
 });
