@@ -1,0 +1,1 @@
+[ ] The diagnostics output can be very large on certain scenarios. Render all by categories for saving up terminal tokens
