@@ -1,0 +1,125 @@
+{
+  "name": "orcas",
+  "version": "0.0.1",
+  "description": "Find dead code and unused values in JavaScript & TypeScript — unused imports, exports, files, dependencies, nested object/array keys, discarded return values, and dead mutations. Report-only, fast, and silent unless 100% certain.",
+  "keywords": [
+    "dead-code",
+    "deadcode",
+    "unused-code",
+    "unused",
+    "unused-exports",
+    "unused-imports",
+    "unused-variables",
+    "unused-files",
+    "unused-dependencies",
+    "unused-dependency",
+    "unused-props",
+    "unused-properties",
+    "dead-exports",
+    "dead-imports",
+    "dead-store",
+    "find-unused",
+    "remove-unused",
+    "cleanup",
+    "declutter",
+    "prune",
+    "tree-shaking",
+    "static-analysis",
+    "code-analysis",
+    "ast",
+    "lint",
+    "linter",
+    "code-quality",
+    "maintainability",
+    "refactor",
+    "refactoring",
+    "technical-debt",
+    "tech-debt",
+    "typescript",
+    "javascript",
+    "ts",
+    "js",
+    "esm",
+    "monorepo",
+    "cli",
+    "knip",
+    "ts-prune",
+    "depcheck",
+    "unimported"
+  ],
+  "license": "MIT",
+  "author": "hadetan",
+  "homepage": "https://github.com/hadetan/orcas#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hadetan/orcas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hadetan/orcas/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "orcas": "./bin/orcas.mjs"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "lint": "oxlint",
+    "selfcheck": "npm run build && node ./bin/orcas.mjs ./src",
+    "prepublishOnly": "npm run build && npm test && publint"
+  },
+  "dependencies": {
+    "c12": "^3.3.4",
+    "cac": "^7.0.0",
+    "oxc-resolver": "^11.20.0",
+    "picocolors": "^1.1.1",
+    "tinyglobby": "^0.2.17",
+    "ts-morph": "^28.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "oxlint": "^1.69.0",
+    "prettier": "^3.8.4",
+    "publint": "^0.3.21",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.8"
+  },
+  "directories": {
+    "doc": "docs"
+  }
+}
