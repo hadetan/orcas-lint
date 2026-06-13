@@ -82,3 +82,56 @@ describe('semantic model — entry points & reachability', () => {
     expect(m.isReachable('packages/foo/build-utils.ts')).toBe(false);
   });
 });
+
+describe('semantic model — export-level liveness (isExportLive)', () => {
+  it('marks every export of an entry-point file as live', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0', main: './index.ts' }));
+    await writeFile(join(dir, 'index.ts'), `export const pub = 1\n`);
+
+    const m = await model(dir);
+    expect(m.isExportLive('index.ts', 'pub')).toBe(true);
+  });
+
+  it('marks an export directly imported by any module as live', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'a.ts'), `export const foo = 1\n`);
+    await writeFile(join(dir, 'b.ts'), `import { foo } from './a'\nconsole.log(foo)\n`);
+
+    const m = await model(dir);
+    expect(m.isExportLive('a.ts', 'foo')).toBe(true);
+  });
+
+  it('marks a dead export in a reachable file as not live', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0', main: './index.ts' }));
+    await writeFile(join(dir, 'index.ts'), `import { used } from './utils'\nconsole.log(used)\n`);
+    await writeFile(join(dir, 'utils.ts'), `export const used = 1\nexport const dead = 2\n`);
+
+    const m = await model(dir);
+    expect(m.isExportLive('utils.ts', 'used')).toBe(true);
+    expect(m.isExportLive('utils.ts', 'dead')).toBe(false);
+  });
+
+  it('marks an export re-exported through a live barrel as live', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0', main: './index.ts' }));
+    await writeFile(join(dir, 'index.ts'), `export { x } from './impl'\n`);
+    await writeFile(join(dir, 'impl.ts'), `export const x = 1\n`);
+
+    const m = await model(dir);
+    expect(m.isExportLive('impl.ts', 'x')).toBe(true);
+  });
+
+  it('terminates cleanly on a circular re-export chain', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'a.ts'), `export { b } from './b'\nexport const a = 1\n`);
+    await writeFile(join(dir, 'b.ts'), `export { a } from './a'\nexport const b = 2\n`);
+    await writeFile(join(dir, 'consumer.ts'), `import { a, b } from './a'\nconsole.log(a, b)\n`);
+
+    const m = await model(dir);
+    expect(m.isExportLive('a.ts', 'a')).toBe(true);
+    expect(m.isExportLive('a.ts', 'b')).toBe(true);
+    expect(m.isExportLive('b.ts', 'b')).toBe(true);
+  });
+});

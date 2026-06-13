@@ -17,6 +17,7 @@ const stubSonar: SemanticModel = {
   importersOf: () => [],
   hasDynamicImport: () => false,
   hasDynamicImportIn: () => false,
+  isExportLive: () => false,
 };
 
 const stubManifest = {

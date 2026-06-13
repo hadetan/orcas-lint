@@ -32,6 +32,18 @@ describe('dead-import hunter', () => {
     await runFixture(join(fixtures, 'jsx-automatic-runtime'));
   });
 
+  it('reports an unused destructured CJS require binding', async () => {
+    await runFixture(join(fixtures, 'cjs-named-dead'));
+  });
+
+  it('records a cjs-whole-require skip for a used whole-object require binding', async () => {
+    await runFixture(join(fixtures, 'cjs-namespace-skip'));
+  });
+
+  it('reports a completely unused whole-object require binding as a dead import', async () => {
+    await runFixture(join(fixtures, 'cjs-namespace-unused'));
+  });
+
   it('skips (never flags) an import when references cannot be resolved within budget', () => {
     let now = 0;
     const clock = (): number => (now += 1_000_000);
@@ -65,6 +77,7 @@ describe('dead-import hunter', () => {
       importersOf: () => [],
       hasDynamicImport: () => false,
       hasDynamicImportIn: () => false,
+      isExportLive: () => false,
     };
     const ctx: HunterContext = {
       cwd: '/tmp',

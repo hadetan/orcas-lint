@@ -1,0 +1,16 @@
+{
+  "findings": [],
+  "skips": [
+    {
+      "rule": "dead-import",
+      "reason": "cjs-whole-require",
+      "message": "'utils' is a whole-object require — named bindings unprovable, skipping dead-import check",
+      "path": "utils",
+      "location": {
+        "file": "input.js",
+        "line": 1,
+        "column": 7
+      }
+    }
+  ]
+}

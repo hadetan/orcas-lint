@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ts } from 'ts-morph';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createProject, extractExports, extractImports, jsxFactoryRoots } from '../../src/sonar/parser';
+import {
+  createProject,
+  extractCjsBindings,
+  extractCjsExports,
+  extractExports,
+  extractImports,
+  jsxFactoryRoots,
+} from '../../src/sonar/parser';
 
 let dir: string;
 beforeAll(async () => {
@@ -69,6 +76,85 @@ describe('sonar parser — exports', () => {
     expect(kinds).toContain('default:default');
     expect(kinds).toContain('star-reexport:*');
     expect(kinds).toContain('named-reexport:z');
+  });
+});
+
+describe('sonar parser — CJS bindings (extractCjsBindings)', () => {
+  it('extracts named bindings from destructured require', () => {
+    const sf = source('a.ts', `const { foo, bar } = require('./utils')\n`);
+    const bindings = extractCjsBindings(sf, 'a.ts');
+    expect(bindings).toHaveLength(2);
+    const names = bindings.map((b) => [b.localName, b.kind, b.importedName]);
+    expect(names).toContainEqual(['foo', 'cjs-named', 'foo']);
+    expect(names).toContainEqual(['bar', 'cjs-named', 'bar']);
+    expect(bindings.every((b) => b.specifier === './utils')).toBe(true);
+    expect(bindings.every((b) => b.isTypeOnly === false)).toBe(true);
+  });
+
+  it('handles renamed destructured bindings: { original: alias }', () => {
+    const sf = source('a.ts', `const { alpha: a, beta } = require('./m')\nconsole.log(a, beta)\n`);
+    const bindings = extractCjsBindings(sf, 'a.ts');
+    const byLocal = new Map(bindings.map((b) => [b.localName, b]));
+    expect(byLocal.get('a')?.importedName).toBe('alpha');
+    expect(byLocal.get('beta')?.importedName).toBe('beta');
+  });
+
+  it('ref-counts a used destructured name as referenced and an unused one as zero', () => {
+    const sf = source('a.ts', `const { used, dead } = require('./m')\nconsole.log(used)\n`);
+    const bindings = extractCjsBindings(sf, 'a.ts');
+    const byName = new Map(bindings.map((b) => [b.localName, b.references]));
+    expect(byName.get('used')).toBeGreaterThanOrEqual(1);
+    expect(byName.get('dead')).toBe(0);
+  });
+
+  it('extracts a whole-object require as cjs-namespace', () => {
+    const sf = source('a.ts', `const utils = require('./utils')\nconsole.log(utils.x)\n`);
+    const bindings = extractCjsBindings(sf, 'a.ts');
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]?.kind).toBe('cjs-namespace');
+    expect(bindings[0]?.localName).toBe('utils');
+    expect(bindings[0]?.references).toBeGreaterThanOrEqual(1);
+  });
+
+  it('produces no bindings for a dynamic require specifier', () => {
+    const sf = source('a.ts', `const m = require(dynamicPath)\n`);
+    expect(extractCjsBindings(sf, 'a.ts')).toHaveLength(0);
+  });
+
+  it('produces no bindings when the require result is discarded inline', () => {
+    const sf = source('a.ts', `require('./side-effect')\n`);
+    expect(extractCjsBindings(sf, 'a.ts')).toHaveLength(0);
+  });
+});
+
+describe('sonar parser — CJS exports (extractCjsExports)', () => {
+  it('extracts each key from module.exports = { ... } object literal', () => {
+    const sf = source('a.ts', `const alpha = 1\nconst beta = 2\nmodule.exports = { alpha, beta }\n`);
+    const exports = extractCjsExports(sf, 'a.ts');
+    expect(exports).toHaveLength(2);
+    const names = exports.map((e) => e.exportedName);
+    expect(names).toContain('alpha');
+    expect(names).toContain('beta');
+    expect(exports.every((e) => e.kind === 'cjs-named')).toBe(true);
+    expect(exports.every((e) => e.isTypeOnly === false)).toBe(true);
+  });
+
+  it('extracts exports.foo = value assignment', () => {
+    const sf = source('a.ts', `exports.gamma = 42\n`);
+    const exports = extractCjsExports(sf, 'a.ts');
+    expect(exports).toHaveLength(1);
+    expect(exports[0]?.exportedName).toBe('gamma');
+    expect(exports[0]?.kind).toBe('cjs-named');
+  });
+
+  it('produces no exports for non-literal module.exports assignment', () => {
+    const sf = source('a.ts', `module.exports = someVariable\n`);
+    expect(extractCjsExports(sf, 'a.ts')).toHaveLength(0);
+  });
+
+  it('produces no exports for dynamic module.exports', () => {
+    const sf = source('a.ts', `module.exports = getExports()\n`);
+    expect(extractCjsExports(sf, 'a.ts')).toHaveLength(0);
   });
 });
 

@@ -304,6 +304,157 @@ export function extractRequires(sf: SourceFile, relFile: string): RawRequire[] {
   return out;
 }
 
+/**
+ * Extract CJS require bindings from top-level variable declarations.
+ * `const { foo } = require('./x')` → one `cjs-named` binding per destructured name.
+ * `const utils = require('./x')` → one `cjs-namespace` binding.
+ * Dynamic require, non-literal specifier, or non-variable results yield no bindings.
+ */
+export function extractCjsBindings(sf: SourceFile, relFile: string): RawImport[] {
+  const out: RawImport[] = [];
+
+  for (const varStmt of sf.getVariableStatements()) {
+    for (const decl of varStmt.getDeclarations()) {
+      const init = decl.getInitializer();
+      if (!init || init.getKind() !== ts.SyntaxKind.CallExpression) continue;
+      const call = init.asKind(ts.SyntaxKind.CallExpression);
+      if (!call) continue;
+      const expr = call.getExpression();
+      if (expr.getKind() !== ts.SyntaxKind.Identifier || expr.getText() !== 'require') continue;
+
+      const args = call.getArguments();
+      const arg = args[0];
+      if (!arg) continue;
+      const literal =
+        arg.asKind(ts.SyntaxKind.StringLiteral) ??
+        arg.asKind(ts.SyntaxKind.NoSubstitutionTemplateLiteral);
+      if (!literal) continue;
+
+      const specifier = literal.getLiteralValue();
+      const nameNode = decl.getNameNode();
+      const declStart = decl.getStart();
+      const declEnd = decl.getEnd();
+
+      if (nameNode.getKind() === ts.SyntaxKind.ObjectBindingPattern) {
+        const pattern = nameNode.asKind(ts.SyntaxKind.ObjectBindingPattern);
+        if (!pattern) continue;
+        for (const element of pattern.getElements()) {
+          const localNameNode = element.getNameNode();
+          if (localNameNode.getKind() !== ts.SyntaxKind.Identifier) continue;
+          const localId = localNameNode.asKind(ts.SyntaxKind.Identifier);
+          if (!localId) continue;
+          const propNameNode = element.getPropertyNameNode();
+          let importedName: string;
+          if (!propNameNode) {
+            importedName = localId.getText();
+          } else if (propNameNode.getKind() === ts.SyntaxKind.Identifier) {
+            importedName = propNameNode.getText();
+          } else if (propNameNode.getKind() === ts.SyntaxKind.StringLiteral) {
+            importedName = propNameNode.asKind(ts.SyntaxKind.StringLiteral)!.getLiteralValue();
+          } else {
+            continue;
+          }
+          out.push({
+            localName: localId.getText(),
+            specifier,
+            kind: 'cjs-named',
+            importedName,
+            isTypeOnly: false,
+            references: countReferences(localId, declStart, declEnd),
+            loc: locOf(sf, relFile, element),
+          });
+        }
+      } else if (nameNode.getKind() === ts.SyntaxKind.Identifier) {
+        const localId = nameNode.asKind(ts.SyntaxKind.Identifier);
+        if (!localId) continue;
+        out.push({
+          localName: localId.getText(),
+          specifier,
+          kind: 'cjs-namespace',
+          isTypeOnly: false,
+          references: countReferences(localId, declStart, declEnd),
+          loc: locOf(sf, relFile, localId),
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Extract CJS named exports from top-level assignment statements.
+ * `module.exports = { alpha, beta }` → one `cjs-named` record per property key.
+ * `exports.gamma = value` → one `cjs-named` record.
+ * Non-literal `module.exports` and computed keys are silently skipped.
+ * `module.exports.foo = value` is NOT handled.
+ */
+export function extractCjsExports(sf: SourceFile, relFile: string): RawExport[] {
+  const out: RawExport[] = [];
+
+  for (const stmt of sf.getStatements()) {
+    if (stmt.getKind() !== ts.SyntaxKind.ExpressionStatement) continue;
+    const exprStmt = stmt.asKind(ts.SyntaxKind.ExpressionStatement);
+    if (!exprStmt) continue;
+    const expr = exprStmt.getExpression();
+    if (expr.getKind() !== ts.SyntaxKind.BinaryExpression) continue;
+    const binary = expr.asKind(ts.SyntaxKind.BinaryExpression);
+    if (!binary) continue;
+    if (binary.getOperatorToken().getKind() !== ts.SyntaxKind.EqualsToken) continue;
+
+    const lhs = binary.getLeft();
+    if (lhs.getKind() !== ts.SyntaxKind.PropertyAccessExpression) continue;
+    const propAccess = lhs.asKind(ts.SyntaxKind.PropertyAccessExpression);
+    if (!propAccess) continue;
+    const objText = propAccess.getExpression().getText();
+    const exportedName = propAccess.getName();
+
+    if (objText === 'module' && exportedName === 'exports') {
+      const rhs = binary.getRight();
+      if (rhs.getKind() !== ts.SyntaxKind.ObjectLiteralExpression) continue;
+      const objLit = rhs.asKind(ts.SyntaxKind.ObjectLiteralExpression);
+      if (!objLit) continue;
+      for (const prop of objLit.getProperties()) {
+        if (prop.getKind() === ts.SyntaxKind.PropertyAssignment) {
+          const pa = prop.asKind(ts.SyntaxKind.PropertyAssignment);
+          if (!pa) continue;
+          const name = pa.getName();
+          if (name) {
+            out.push({
+              exportedName: name,
+              localName: name,
+              kind: 'cjs-named',
+              isTypeOnly: false,
+              loc: locOf(sf, relFile, pa.getNameNode()),
+            });
+          }
+        } else if (prop.getKind() === ts.SyntaxKind.ShorthandPropertyAssignment) {
+          const spa = prop.asKind(ts.SyntaxKind.ShorthandPropertyAssignment);
+          if (!spa) continue;
+          const name = spa.getName();
+          out.push({
+            exportedName: name,
+            localName: name,
+            kind: 'cjs-named',
+            isTypeOnly: false,
+            loc: locOf(sf, relFile, spa.getNameNode()),
+          });
+        }
+      }
+    } else if (objText === 'exports') {
+      out.push({
+        exportedName,
+        localName: exportedName,
+        kind: 'cjs-named',
+        isTypeOnly: false,
+        loc: locOf(sf, relFile, propAccess.getNameNode()),
+      });
+    }
+  }
+
+  return out;
+}
+
 /** Whether the module performs a dynamic `import()` with a non-literal specifier. */
 export function detectDynamicImport(sf: SourceFile): boolean {
   for (const call of sf.getDescendantsOfKind(ts.SyntaxKind.CallExpression)) {

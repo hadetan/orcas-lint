@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "rule": "dead-import",
+      "severity": "error",
+      "message": "'utils' is imported but never used",
+      "path": "utils",
+      "location": {
+        "file": "input.js",
+        "line": 1,
+        "column": 7
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

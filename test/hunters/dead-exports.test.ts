@@ -33,4 +33,20 @@ describe('dead-export hunter', () => {
   it('in production mode excludes tests, so a test-only export becomes dead', async () => {
     await runFixture(join(fixtures, 'production-excludes-tests'));
   });
+
+  it('reports a dead export in a reachable (non-entry-point) file', async () => {
+    await runFixture(join(fixtures, 'dead-export-in-reachable-file'));
+  });
+
+  it('reports a dead type export (export type) in a reachable file', async () => {
+    await runFixture(join(fixtures, 'type-export-in-reachable-file'));
+  });
+
+  it('reports a CJS named export (module.exports = {}) with no consumers', async () => {
+    await runFixture(join(fixtures, 'cjs-export-dead'));
+  });
+
+  it('reports only the unconsumed key when one CJS export is consumed via destructured require', async () => {
+    await runFixture(join(fixtures, 'cjs-export-consumed'));
+  });
 });

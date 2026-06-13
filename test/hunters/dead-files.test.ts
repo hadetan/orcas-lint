@@ -48,6 +48,7 @@ describe('dead-file hunter', () => {
       importersOf: () => [],
       hasDynamicImport: () => false,
       hasDynamicImportIn: () => false,
+      isExportLive: () => false,
     };
     const config = defaultConfig();
     config.rules['dead-file'] = 'off';

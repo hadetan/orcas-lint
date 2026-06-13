@@ -11,4 +11,5 @@ export const SKIP_REASONS = [
   'unrecognized-config',
   'unresolved-specifier',
   'budget-exceeded',
+  'cjs-whole-require',
 ] as const satisfies readonly SkipReason[];

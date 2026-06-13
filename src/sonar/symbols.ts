@@ -18,8 +18,10 @@ export function findImporters(
       if (imp.resolvedFile !== file) continue;
       const consumes =
         imp.kind === 'namespace' ||
+        imp.kind === 'cjs-namespace' ||
         (imp.kind === 'default' && exportName === 'default') ||
-        (imp.kind === 'named' && imp.importedName === exportName);
+        (imp.kind === 'named' && imp.importedName === exportName) ||
+        (imp.kind === 'cjs-named' && imp.importedName === exportName);
       if (consumes) sites.push({ file: mod.file, loc: imp.loc, viaReexport: false });
     }
 
