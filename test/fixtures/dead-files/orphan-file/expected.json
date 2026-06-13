@@ -3,7 +3,7 @@
     {
       "rule": "dead-file",
       "severity": "error",
-      "message": "'orphan.ts' is never imported and is unreachable from any entry point",
+      "message": "'orphan.ts' is unreachable from any entry point",
       "path": "orphan.ts",
       "location": {
         "file": "orphan.ts",

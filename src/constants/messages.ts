@@ -5,7 +5,7 @@ export const MESSAGES = {
   configError: (detail: string): string => `Invalid Orcas configuration: ${detail}`,
   deadImport: (name: string): string => `'${name}' is imported but never used`,
   deadExport: (name: string): string => `'${name}' is exported but never used`,
-  deadFile: (file: string): string => `'${file}' is never imported and is unreachable from any entry point`,
+  deadFile: (file: string): string => `'${file}' is unreachable from any entry point`,
   skipReferencesBudget: (name: string): string =>
     `could not resolve references for '${name}' within the analysis budget`,
   skipDynamicImport: (name: string): string =>

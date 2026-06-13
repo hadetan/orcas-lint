@@ -3,7 +3,7 @@
     {
       "rule": "dead-file",
       "severity": "error",
-      "message": "'a.ts' is never imported and is unreachable from any entry point",
+      "message": "'a.ts' is unreachable from any entry point",
       "path": "a.ts",
       "location": {
         "file": "a.ts",
@@ -15,7 +15,7 @@
     {
       "rule": "dead-file",
       "severity": "error",
-      "message": "'b.ts' is never imported and is unreachable from any entry point",
+      "message": "'b.ts' is unreachable from any entry point",
       "path": "b.ts",
       "location": {
         "file": "b.ts",
