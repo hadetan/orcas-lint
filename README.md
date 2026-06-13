@@ -27,7 +27,7 @@ to see what it skipped and why).
 **Detection — Reachability**
 - [x] Dead imports
 - [x] Dead exports
-- [ ] Unused files
+- [x] Unused files
 - [ ] Unused dependencies (and unlisted dependencies)
 
 **Detection — Value Flow**
