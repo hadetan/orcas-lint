@@ -19,6 +19,13 @@ const stubSonar: SemanticModel = {
   hasDynamicImportIn: () => false,
 };
 
+const stubManifest = {
+  main: undefined, module: undefined, types: undefined, typings: undefined,
+  exports: undefined, bin: undefined,
+  dependencies: {}, devDependencies: {}, peerDependencies: {},
+  optionalDependencies: {}, scripts: {},
+};
+
 function context(): HunterContext {
   return {
     cwd: '/tmp',
@@ -27,6 +34,7 @@ function context(): HunterContext {
     budget: createBudget(),
     echo: createEcho(),
     sonar: stubSonar,
+    manifest: stubManifest,
   };
 }
 

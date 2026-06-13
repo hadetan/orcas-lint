@@ -1,1 +1,1 @@
-{ "rules": { "dead-export": "off", "dead-file": "off" } }
+{ "rules": { "dead-export": "off", "dead-file": "off", "unused-dependency": "off", "unlisted-dependency": "off" } }

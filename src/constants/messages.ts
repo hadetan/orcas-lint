@@ -14,4 +14,8 @@ export const MESSAGES = {
     `'${file}' may be loaded by a non-literal dynamic import in reachable code`,
   skipReexportBoundary: (name: string): string =>
     `'${name}' is re-exported to a target outside the analyzed project`,
+  unusedDependency: (pkg: string): string =>
+    `'${pkg}' is declared in package.json but never imported`,
+  unlistedDependency: (pkg: string): string =>
+    `'${pkg}' is imported but not listed in package.json`,
 } as const;

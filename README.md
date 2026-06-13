@@ -28,7 +28,9 @@ to see what it skipped and why).
 - [x] Dead imports
 - [x] Dead exports
 - [x] Unused files
-- [ ] Unused dependencies (and unlisted dependencies)
+- [x] Unused dependencies (and unlisted dependencies)
+- [ ] CJS dead imports and exports
+- [ ] Type dead detection
 
 **Detection — Value Flow**
 - [ ] Value graph (Atlas) and escape/alias analysis

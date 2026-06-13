@@ -5,5 +5,15 @@
   "rules": {
     "dead-import": "error",
     "dead-export": "error"
-  }
+  },
+  "ignoreBinaries": [
+    "@types/node",
+    "@vitest/coverage-v8",
+    "oxlint",
+    "prettier",
+    "publint",
+    "tsup",
+    "typescript",
+    "vitest"
+  ]
 }

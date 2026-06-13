@@ -278,6 +278,32 @@ export function extractExports(sf: SourceFile, relFile: string): RawExport[] {
   return out;
 }
 
+/** A CJS require call before its specifier has been resolved. */
+type RawRequire = { specifier: string; loc: SourceLocation };
+
+/**
+ * Extract every `require('literal')` call from a module. Only calls where the
+ * callee is the bare identifier `require`, not `require.resolve` or similar,
+ * and the argument is a string literal are captured. Dynamic `require(variable)`
+ * calls are silently skipped.
+ */
+export function extractRequires(sf: SourceFile, relFile: string): RawRequire[] {
+  const out: RawRequire[] = [];
+  for (const call of sf.getDescendantsOfKind(ts.SyntaxKind.CallExpression)) {
+    const expr = call.getExpression();
+    if (expr.getKind() !== ts.SyntaxKind.Identifier || expr.getText() !== 'require') continue;
+    const args = call.getArguments();
+    const arg = args[0];
+    if (!arg) continue;
+    const literal =
+      arg.asKind(ts.SyntaxKind.StringLiteral) ??
+      arg.asKind(ts.SyntaxKind.NoSubstitutionTemplateLiteral);
+    if (!literal) continue;
+    out.push({ specifier: literal.getLiteralValue(), loc: locAt(sf, relFile, call.getStart()) });
+  }
+  return out;
+}
+
 /** Whether the module performs a dynamic `import()` with a non-literal specifier. */
 export function detectDynamicImport(sf: SourceFile): boolean {
   for (const call of sf.getDescendantsOfKind(ts.SyntaxKind.CallExpression)) {

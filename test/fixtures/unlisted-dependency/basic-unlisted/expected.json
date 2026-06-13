@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "rule": "unlisted-dependency",
+      "severity": "error",
+      "message": "'lodash' is imported but not listed in package.json",
+      "path": "lodash",
+      "location": { "file": "src/index.ts", "line": 1, "column": 10 },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}
