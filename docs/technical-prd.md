@@ -187,7 +187,8 @@ the whole workspace.
   Handles `tsconfig` `paths`, `exports` maps, extensions, monorepo links.
 - **Module graph:** directed graph of files with import/export edges. Re-exports
   (`export * from`, `export { x } from`) are followed. Dynamic `import()` is recorded as a
-  use of the target.
+  use of the target. CJS `require('literal')` calls are extracted as file-level edges; named CJS bindings (destructured require, `module.exports = {…}`, `exports.X`) are modelled as `ImportBinding`/`ExportRecord` entries with CJS-specific `kind` variants.
+- **Export-level liveness:** in addition to file-level reachability, Sonar precomputes a named-export liveness set (`isExportLive`): a BFS from entry-point exports following re-export chains. Dead-export detection queries this per-symbol rather than per-file.
 - **Entry points:** roots that are always "live". Auto-derived from:
   - `package.json` → `main`, `module`, `exports`, `bin`, `types`
   - common config / setup files (configurable)
@@ -261,14 +262,13 @@ is the contract for what v1 will and won't report by default.
 
 ### Hunter 1 — Dead imports *(certainty: HIGH)*
 - **Reports:** an imported binding with zero `reads` in its module.
-- **Handles:** type-only imports, JSX usage, re-exports, namespace imports (`import * as ns`).
-- **Never reports:** side-effect imports (`import './styles.css'`).
+- **Handles:** type-only imports, JSX usage, re-exports, namespace imports (`import * as ns`), CJS destructured require bindings (`const { foo } = require('./x')`).
+- **Never reports:** side-effect imports (`import './styles.css'`); whole-object CJS bindings (`const utils = require('./x')`) where property access patterns cannot be proven dead — these emit an Echo skip with reason `cjs-whole-require` instead.
 
 ### Hunter 2 — Dead exports *(certainty: HIGH, workspace-scoped)*
-- **Reports:** an exported symbol not imported by any other module in the workspace **and**
-  not reachable from an entry point.
-- **Handles:** re-export chains, dynamic `import()`, barrel files.
-- **Never reports:** anything in a library's public API (entry points).
+- **Reports:** an exported symbol not live — checked **per-symbol**, not per-file. A symbol is live when: (a) its file is an entry point, or (b) it is directly imported by any module, or (c) it is re-exported through a chain that eventually reaches a live consumer. Files that are merely reachable but not entry points are examined export by export.
+- **Handles:** re-export chains, dynamic `import()`, barrel files, type exports (`export type`, `export interface`), CJS named exports (`module.exports = { … }`, `exports.X = …`).
+- **Never reports:** anything in a library's public API (entry-point files); a symbol re-exported through a live barrel chain.
 
 ### Hunters 3–5 — Dead nested object/array keys *(certainty: HIGH for reported, conservative)*  ⭐ flagship
 - **Reports:** for a value with a knowable literal shape, an access-path that is `defined`
@@ -610,7 +610,7 @@ Orcas is correct on code we fully control.
 ## 15. Milestones (build order, not new scope)
 
 1. **Skeleton:** Pod + Sonar + Atlas core + config + pretty reporter + Den cache.
-2. **Hunters 1 & 2** (dead imports/exports) — validates the graph end-to-end.
+2. **Hunters 1 & 2** (dead imports/exports) — validates the graph end-to-end. Includes per-symbol export-level liveness (`isExportLive` on `SemanticModel`), type export detection, and CJS named binding support (`ImportKind: 'cjs-named'|'cjs-namespace'`, `ExportKind: 'cjs-named'`).
 3. **Current** (escape/alias) — the safety layer the deep Hunters depend on.
 4. **Hunters 3–5** (dead nested properties) — the flagship.
 5. **Echo** + `--debug` wired through all Hunters.

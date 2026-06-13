@@ -1,8 +1,10 @@
 # dead-imports Specification
 
 ## Purpose
-TBD - created by archiving change detect-dead-imports-exports. Update Purpose after archive.
+Detect imported bindings that are never referenced within their declaring module. Covers ESM named, default, and namespace imports and CJS destructured require bindings. Side-effect imports and bindings referenced only in type or JSX positions are never flagged.
+
 ## Requirements
+
 ### Requirement: Reports unreferenced imports
 The `dead-import` Hunter SHALL report an imported binding that has zero references within its declaring module as a `dead-import` finding at HIGH certainty, locating the finding at the import binding.
 
@@ -36,6 +38,28 @@ The `dead-import` Hunter SHALL treat a binding used only in a type position, or 
 - **WHEN** an imported component `Button` is used only as `<Button />`
 - **THEN** no `dead-import` finding is produced for `Button`
 
+### Requirement: Reports unreferenced CJS destructured require bindings
+The `dead-import` Hunter SHALL apply the same zero-reference check to named bindings introduced by destructured CJS `require()` calls with a literal specifier. A name destructured from `require('literal')` that is never referenced in the module is reported as a `dead-import` finding.
+
+#### Scenario: An unused destructured CJS binding is reported
+- **WHEN** a module has `const { formatDate } = require('./utils')` and never references `formatDate`
+- **THEN** a `dead-import` finding is reported for `formatDate`
+
+#### Scenario: A used destructured CJS binding is not reported
+- **WHEN** a module has `const { formatDate } = require('./utils')` and calls `formatDate()`
+- **THEN** no `dead-import` finding is produced for `formatDate`
+
+### Requirement: Skips whole-object CJS require bindings without destructuring
+When a `require()` result is bound to an identifier without destructuring, the Hunter cannot prove which properties are actually used. It SHALL record an Echo skip with reason `cjs-whole-require` rather than a finding.
+
+#### Scenario: A whole-object require skip is recorded
+- **WHEN** a module has `const utils = require('./utils')` (no destructuring) and `utils` is referenced
+- **THEN** no `dead-import` finding is produced; a skip with reason `cjs-whole-require` is recorded for that binding
+
+#### Scenario: A dynamic require specifier is silently ignored
+- **WHEN** a module contains `require(dynamicPath)` with a non-literal argument
+- **THEN** no finding and no skip are produced
+
 ### Requirement: Skips when references cannot be determined within budget
 When the references of an import binding cannot be resolved with certainty within the per-file analysis budget, the `dead-import` Hunter SHALL record an Echo skip rather than report a finding.
 
@@ -60,4 +84,3 @@ The `dead-import` Hunter SHALL treat the JSX factory import (e.g. `React`) as us
 #### Scenario: An unnecessary React import under the automatic runtime is reported
 - **WHEN** a module under `jsx: react-jsx` imports `React` but only uses JSX (which needs no `React` import)
 - **THEN** a `dead-import` finding is reported for `React`
-

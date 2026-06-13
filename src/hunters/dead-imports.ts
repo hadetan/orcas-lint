@@ -22,7 +22,18 @@ export const deadImports: Hunter = {
       if (!mod) continue;
       for (const imp of mod.imports) {
         if (imp.kind === 'side-effect') continue;
-        if (imp.references > 0) continue;
+        if (imp.references > 0) {
+          if (imp.kind === 'cjs-namespace') {
+            skips.push({
+              rule: 'dead-import',
+              reason: 'cjs-whole-require',
+              message: MESSAGES.skipCjsWholeRequire(imp.localName),
+              path: imp.localName,
+              location: imp.loc,
+            });
+          }
+          continue;
+        }
 
         if (ctx.budget.timeExceeded()) {
           skips.push({

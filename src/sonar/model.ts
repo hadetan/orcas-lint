@@ -1,10 +1,10 @@
 import type { SourceLocation } from '../types';
 
 /** How an imported binding is introduced into a module. */
-export type ImportKind = 'named' | 'default' | 'namespace' | 'side-effect';
+export type ImportKind = 'named' | 'default' | 'namespace' | 'side-effect' | 'cjs-named' | 'cjs-namespace';
 
 /** How an exported name leaves a module. */
-export type ExportKind = 'named' | 'default' | 'star-reexport' | 'named-reexport';
+export type ExportKind = 'named' | 'default' | 'star-reexport' | 'named-reexport' | 'cjs-named';
 
 /** A single binding introduced by an import declaration. */
 export interface ImportBinding {
@@ -89,4 +89,11 @@ export interface SemanticModel {
   hasDynamicImport(): boolean;
   /** True when the given file performs a non-literal dynamic import. */
   hasDynamicImportIn(file: string): boolean;
+  /**
+   * True when `exportName` from `file` is imported by any module,
+   * or transitively reachable via re-export from an entry point.
+   * Conservative: an export consumed only by an unreachable module
+   * is still considered live.
+   */
+  isExportLive(file: string, exportName: string): boolean;
 }

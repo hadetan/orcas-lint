@@ -1,0 +1,29 @@
+{
+  "findings": [
+    {
+      "rule": "dead-export",
+      "severity": "error",
+      "message": "'alpha' is exported but never used",
+      "path": "alpha",
+      "location": {
+        "file": "input.js",
+        "line": 3,
+        "column": 20
+      },
+      "certainty": "certain"
+    },
+    {
+      "rule": "dead-export",
+      "severity": "error",
+      "message": "'beta' is exported but never used",
+      "path": "beta",
+      "location": {
+        "file": "input.js",
+        "line": 3,
+        "column": 27
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "rule": "dead-export",
+      "severity": "error",
+      "message": "'dead' is exported but never used",
+      "path": "dead",
+      "location": {
+        "file": "utils.ts",
+        "line": 2,
+        "column": 14
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

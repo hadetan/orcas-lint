@@ -18,4 +18,6 @@ export const MESSAGES = {
     `'${pkg}' is declared in package.json but never imported`,
   unlistedDependency: (pkg: string): string =>
     `'${pkg}' is imported but not listed in package.json`,
+  skipCjsWholeRequire: (name: string): string =>
+    `'${name}' is a whole-object require — named bindings unprovable, skipping dead-import check`,
 } as const;

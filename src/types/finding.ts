@@ -27,7 +27,8 @@ export type SkipReason =
   | 'unanalyzable-construct'
   | 'unrecognized-config'
   | 'unresolved-specifier'
-  | 'budget-exceeded';
+  | 'budget-exceeded'
+  | 'cjs-whole-require';
 
 /** Something the engine could not prove dead. Recorded, not reported unless `--debug`. */
 export interface Skip {

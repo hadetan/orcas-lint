@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "rule": "dead-export",
+      "severity": "error",
+      "message": "'DeadType' is exported but never used",
+      "path": "DeadType",
+      "location": {
+        "file": "types.ts",
+        "line": 2,
+        "column": 13
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

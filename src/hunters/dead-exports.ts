@@ -18,11 +18,13 @@ function unresolvedReexport(mod: { exports: readonly ExportRecord[] }): ExportRe
 }
 
 /**
- * Hunter 2, dead exports. Reports an exported symbol that is not reachable from
- * an entry point and that no module imports directly. Re-export liveness is
- * handled by reachability, so a symbol re-exported only by an unreachable barrel
- * is still reported, while one behind a reachable barrel is not. Backs off to a
- * skip where consumers cannot be seen.
+ * Hunter 2, dead exports. Reports an exported symbol in any non-entry-point file
+ * that `sonar.isExportLive` does not mark as live. Liveness is computed by a BFS
+ * seeded from entry-point exports and all direct imports across the project, then
+ * propagated through named- and star-reexport chains. A symbol re-exported only
+ * by an unreachable barrel is still reported (nothing seeds it live); one consumed
+ * via a live import or re-export chain is not. Backs off to a skip where
+ * consumers cannot be seen (dynamic import or unresolved re-export).
  */
 export const deadExports: Hunter = {
   id: 'dead-export',
@@ -37,7 +39,7 @@ export const deadExports: Hunter = {
       if (ctx.sonar.isTest(file)) continue;
       const mod = ctx.sonar.module(file);
       if (!mod) continue;
-      if (ctx.sonar.isReachable(file)) continue;
+      if (ctx.sonar.entryPoints().has(file)) continue;
 
       const unresolved = unresolvedReexport(mod);
       if (unresolved) {
@@ -55,8 +57,7 @@ export const deadExports: Hunter = {
 
       for (const exp of mod.exports) {
         if (exp.kind === 'star-reexport' || exp.kind === 'named-reexport') continue;
-        const importers = ctx.sonar.importersOf(file, exp.exportedName);
-        if (importers.some((site) => !site.viaReexport)) continue;
+        if (ctx.sonar.isExportLive(file, exp.exportedName)) continue;
 
         if (dynamic) {
           skips.push({
