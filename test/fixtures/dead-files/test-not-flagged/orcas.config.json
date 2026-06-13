@@ -1,0 +1,5 @@
+{
+  "entry": ["entry.ts"],
+  "tests": ["**/*.test.ts"],
+  "rules": { "dead-import": "off", "dead-export": "off" }
+}

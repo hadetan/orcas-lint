@@ -1,0 +1,16 @@
+{
+  "findings": [],
+  "skips": [
+    {
+      "rule": "dead-file",
+      "reason": "dynamic-access",
+      "message": "'orphan.ts' may be loaded by a non-literal dynamic import in reachable code",
+      "path": "orphan.ts",
+      "location": {
+        "file": "orphan.ts",
+        "line": 1,
+        "column": 1
+      }
+    }
+  ]
+}

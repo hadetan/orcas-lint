@@ -75,7 +75,7 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
 
   const modules: ModuleInfo[] = [];
   const moduleByFile = new Map<string, ModuleInfo>();
-  let dynamicImport = false;
+  const dynamicImportFiles = new Set<string>();
 
   for (const rel of files) {
     if (budget?.timeExceeded()) break;
@@ -94,7 +94,7 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
       return { ...exp, resolvedReexport: resolved ? toRel(resolved) : null };
     });
 
-    if (detectDynamicImport(sf)) dynamicImport = true;
+    if (detectDynamicImport(sf)) dynamicImportFiles.add(rel);
 
     const info: ModuleInfo = { file: rel, imports, exports };
     modules.push(info);
@@ -116,6 +116,7 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
     isReachable: (file) => reachable.has(file),
     isTest: (file) => testFiles.has(file),
     importersOf: (file, name) => findImporters(modules, file, name),
-    hasDynamicImport: () => dynamicImport,
+    hasDynamicImport: () => dynamicImportFiles.size > 0,
+    hasDynamicImportIn: (file) => dynamicImportFiles.has(file),
   };
 }

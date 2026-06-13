@@ -63,6 +63,7 @@ describe('dead-import hunter', () => {
       isTest: () => false,
       importersOf: () => [],
       hasDynamicImport: () => false,
+      hasDynamicImportIn: () => false,
     };
     const ctx: HunterContext = {
       cwd: '/tmp',

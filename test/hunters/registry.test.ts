@@ -16,6 +16,7 @@ const stubSonar: SemanticModel = {
   isTest: () => false,
   importersOf: () => [],
   hasDynamicImport: () => false,
+  hasDynamicImportIn: () => false,
 };
 
 function context(): HunterContext {

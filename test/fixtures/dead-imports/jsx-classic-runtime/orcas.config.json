@@ -1,1 +1,1 @@
-{ "rules": { "dead-export": "off" } }
+{ "rules": { "dead-export": "off", "dead-file": "off" } }
