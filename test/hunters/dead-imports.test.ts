@@ -55,6 +55,7 @@ describe('dead-import hunter', () => {
                 },
               ],
               exports: [],
+              requires: [],
             }
           : undefined,
       resolve: () => null,

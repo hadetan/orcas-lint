@@ -42,7 +42,7 @@ export const unusedDependency: Hunter = {
     }
 
     const findings: Finding[] = [];
-    for (const pkg of [...allDeclared].sort()) {
+    for (const pkg of [...allDeclared].toSorted()) {
       if (ignored.has(pkg)) continue;
       if (usedPkgs.has(pkg)) continue;
       findings.push({

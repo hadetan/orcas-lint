@@ -25,6 +25,7 @@ describe('cross-module importers', () => {
       exports: [
         { exportedName: 'x', localName: 'x', kind: 'named', isTypeOnly: false, loc: { file: 'impl.ts', line: 1, column: 1 } },
       ],
+      requires: [],
     },
     {
       file: 'barrel.ts',
@@ -40,6 +41,7 @@ describe('cross-module importers', () => {
           loc: { file: 'barrel.ts', line: 1, column: 1 },
         },
       ],
+      requires: [],
     },
     {
       file: 'user.ts',
@@ -56,6 +58,7 @@ describe('cross-module importers', () => {
         },
       ],
       exports: [],
+      requires: [],
     },
   ];
 

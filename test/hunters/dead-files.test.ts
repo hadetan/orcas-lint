@@ -40,7 +40,7 @@ describe('dead-file hunter', () => {
   it('emits no findings or skips when the rule is off', () => {
     const sonar: SemanticModel = {
       files: () => ['orphan.ts'],
-      module: (file) => (file === 'orphan.ts' ? { file, imports: [], exports: [] } : undefined),
+      module: (file) => (file === 'orphan.ts' ? { file, imports: [], exports: [], requires: [] } : undefined),
       resolve: () => null,
       entryPoints: () => new Set(),
       isReachable: () => false,
