@@ -38,12 +38,23 @@ export interface ExportRecord {
   readonly loc: SourceLocation;
 }
 
+/** A CJS `require('literal')` call captured from a module. */
+export interface RequireBinding {
+  /** The raw module specifier as written, such as `'lodash'` or `'./utils'`. */
+  readonly specifier: string;
+  /** The resolved target as a path relative to `cwd`, or `null` when unresolvable/external. */
+  readonly resolvedFile: string | null;
+  readonly loc: SourceLocation;
+}
+
 /** Everything Sonar knows about one module. */
 export interface ModuleInfo {
   /** Path relative to `cwd`. */
   readonly file: string;
   readonly imports: readonly ImportBinding[];
   readonly exports: readonly ExportRecord[];
+  /** CJS `require('literal')` calls with literal-string specifiers. */
+  readonly requires: readonly RequireBinding[];
 }
 
 /** A location that imports, or re-exports, some other module's export. */

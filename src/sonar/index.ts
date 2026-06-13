@@ -15,4 +15,5 @@ export type {
   ImportSite,
   ImportKind,
   ExportKind,
+  RequireBinding,
 } from './model';

@@ -1,0 +1,9 @@
+{
+  "entry": ["src/index.ts"],
+  "rules": {
+    "dead-import": "off",
+    "dead-export": "off",
+    "dead-file": "off",
+    "unused-dependency": "off"
+  }
+}

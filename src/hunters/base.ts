@@ -2,6 +2,7 @@ import type { Budget } from '../pod/budget';
 import type { Echo } from '../echo';
 import type { Atlas } from '../atlas';
 import type { SemanticModel } from '../sonar/model';
+import type { Manifest } from '../sonar/manifest';
 import type { Finding, OrcasConfig, RuleId, Skip } from '../types';
 
 /**
@@ -17,6 +18,8 @@ export interface HunterContext {
   readonly echo: Echo;
   /** Sonar's read-only semantic model: imports, exports, resolution, reachability. */
   readonly sonar: SemanticModel;
+  /** Parsed `package.json` for this project. */
+  readonly manifest: Manifest;
   /** The value graph, present only when a value-flow rule is enabled. */
   readonly atlas?: Atlas;
 }

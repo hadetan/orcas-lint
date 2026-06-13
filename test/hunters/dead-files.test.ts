@@ -58,6 +58,12 @@ describe('dead-file hunter', () => {
       budget: createBudget(),
       echo: createEcho(),
       sonar,
+      manifest: {
+        main: undefined, module: undefined, types: undefined, typings: undefined,
+        exports: undefined, bin: undefined,
+        dependencies: {}, devDependencies: {}, peerDependencies: {},
+        optionalDependencies: {}, scripts: {},
+      },
     };
 
     const result = deadFiles.run(ctx);

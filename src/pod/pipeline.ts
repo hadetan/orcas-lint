@@ -62,7 +62,7 @@ export async function runPipeline(
   const sonar = await createSemanticModel({ cwd, config, files, testFiles, manifest, budget });
 
   const registry = createRegistry(deps.hunters ?? []);
-  const run = await registry.run({ cwd, files, config, budget, echo, sonar });
+  const run = await registry.run({ cwd, files, config, budget, echo, sonar, manifest });
 
   for (const skip of run.skips) echo.record(skip);
 

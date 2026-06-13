@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "rule": "unused-dependency",
+      "severity": "error",
+      "message": "'express' is declared in package.json but never imported",
+      "path": "express",
+      "location": { "file": "package.json", "line": 1, "column": 1 },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

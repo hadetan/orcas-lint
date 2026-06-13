@@ -11,6 +11,7 @@ import {
   detectDynamicImport,
   extractExports,
   extractImports,
+  extractRequires,
   jsxFactoryRoots,
 } from './parser';
 import { createResolver } from './resolver';
@@ -96,7 +97,12 @@ export async function createSemanticModel(input: SemanticModelInput): Promise<Se
 
     if (detectDynamicImport(sf)) dynamicImportFiles.add(rel);
 
-    const info: ModuleInfo = { file: rel, imports, exports };
+    const requires = extractRequires(sf, rel).map((req) => {
+      const resolved = resolver.resolve(req.specifier, abs);
+      return { ...req, resolvedFile: resolved ? toRel(resolved) : null };
+    });
+
+    const info: ModuleInfo = { file: rel, imports, exports, requires };
     modules.push(info);
     moduleByFile.set(rel, info);
   }

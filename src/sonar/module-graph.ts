@@ -17,6 +17,9 @@ export function buildEdges(modules: readonly ModuleInfo[]): Map<string, string[]
     for (const exp of mod.exports) {
       if (exp.resolvedReexport) targets.add(exp.resolvedReexport);
     }
+    for (const req of mod.requires) {
+      if (req.resolvedFile) targets.add(req.resolvedFile);
+    }
     edges.set(mod.file, [...targets]);
   }
   return edges;
