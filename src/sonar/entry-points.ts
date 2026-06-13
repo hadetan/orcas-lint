@@ -63,5 +63,21 @@ export async function deriveEntryPoints(input: EntryPointInput): Promise<Set<str
     if (rel && fileSet.has(rel)) entries.add(rel);
   }
 
+  /**
+   * Build-tool config files at the project root are treated as implicit roots
+   * to prevent their transitive imports from being flagged as dead code.
+   * Root-level glob only avoids capturing nested configs.
+   */
+  const configFiles = await glob('*.config.{ts,js,mjs,cjs}', {
+    cwd,
+    ignore: config.ignore,
+    absolute: false,
+    dot: false,
+  });
+  for (const file of configFiles) {
+    const rel = file.replaceAll('\\', '/');
+    if (fileSet.has(rel)) entries.add(rel);
+  }
+
   return entries;
 }

@@ -76,4 +76,6 @@ export interface SemanticModel {
   importersOf(file: string, exportName: string): readonly ImportSite[];
   /** True when the project performs a non-literal dynamic import, defeating whole-program proof. */
   hasDynamicImport(): boolean;
+  /** True when the given file performs a non-literal dynamic import. */
+  hasDynamicImportIn(file: string): boolean;
 }

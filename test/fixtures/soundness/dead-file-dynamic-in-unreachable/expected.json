@@ -1,0 +1,29 @@
+{
+  "findings": [
+    {
+      "rule": "dead-file",
+      "severity": "error",
+      "message": "'a.ts' is never imported and is unreachable from any entry point",
+      "path": "a.ts",
+      "location": {
+        "file": "a.ts",
+        "line": 1,
+        "column": 1
+      },
+      "certainty": "certain"
+    },
+    {
+      "rule": "dead-file",
+      "severity": "error",
+      "message": "'b.ts' is never imported and is unreachable from any entry point",
+      "path": "b.ts",
+      "location": {
+        "file": "b.ts",
+        "line": 1,
+        "column": 1
+      },
+      "certainty": "certain"
+    }
+  ],
+  "skips": []
+}

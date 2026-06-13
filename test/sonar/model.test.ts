@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -53,5 +53,32 @@ describe('semantic model — entry points & reachability', () => {
 
     const m = await model(dir);
     expect(m.isReachable('impl.ts')).toBe(true);
+  });
+
+  it('treats a root config file as an entry point and follows its imports', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0' }));
+    await writeFile(join(dir, 'vite.config.ts'), `import { plugin } from './build-utils'\nexport default plugin\n`);
+    await writeFile(join(dir, 'build-utils.ts'), `export const plugin = { name: 'x' }\n`);
+    await writeFile(join(dir, 'orphan.ts'), `export const orphan = 1\n`);
+
+    const m = await model(dir);
+    expect(m.entryPoints().has('vite.config.ts')).toBe(true);
+    expect(m.isReachable('vite.config.ts')).toBe(true);
+    expect(m.isReachable('build-utils.ts')).toBe(true);
+    expect(m.isReachable('orphan.ts')).toBe(false);
+  });
+
+  it('does not auto-detect nested config files as entry points', async () => {
+    const dir = await tempDir();
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0' }));
+    await mkdir(join(dir, 'packages', 'foo'), { recursive: true });
+    await writeFile(join(dir, 'packages', 'foo', 'vite.config.ts'), `import { plugin } from './build-utils'\nexport default plugin\n`);
+    await writeFile(join(dir, 'packages', 'foo', 'build-utils.ts'), `export const plugin = { name: 'x' }\n`);
+
+    const m = await model(dir);
+    expect(m.entryPoints().has('packages/foo/vite.config.ts')).toBe(false);
+    expect(m.isReachable('packages/foo/vite.config.ts')).toBe(false);
+    expect(m.isReachable('packages/foo/build-utils.ts')).toBe(false);
   });
 });

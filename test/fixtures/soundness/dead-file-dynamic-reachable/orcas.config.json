@@ -1,0 +1,1 @@
+{ "entry": ["index.ts"], "rules": { "dead-import": "off", "dead-export": "off" } }

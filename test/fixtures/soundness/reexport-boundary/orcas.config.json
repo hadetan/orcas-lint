@@ -1,1 +1,1 @@
-{ "rules": { "dead-import": "off" } }
+{ "rules": { "dead-import": "off", "dead-file": "off" } }
