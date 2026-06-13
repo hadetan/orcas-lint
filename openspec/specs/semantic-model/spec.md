@@ -75,19 +75,23 @@ Sonar SHALL answer which sites import a given file's exported name, including di
 - **THEN** `importersOf('a', 'x')` includes the barrel's re-export site
 
 ### Requirement: Entry-point derivation and reachability
-Sonar SHALL derive entry points from `package.json` (`main`, `module`, `exports`, `bin`, `types`) and the configuration's `entry` globs, resolved to files. A file SHALL be reachable when it is an entry point or is transitively reachable from an entry point through resolved import and followed re-export edges.
+Sonar SHALL derive entry points from `package.json` (`main`, `module`, `exports`, `bin`, `types`), the configuration's `entry` globs, and recognized build-tool config files at the project root matching `*.config.{ts,js,mjs,cjs}` (non-recursive). All three sources are resolved to in-project files. A file SHALL be reachable when it is an entry point or is transitively reachable from an entry point through resolved import and followed re-export edges.
 
 #### Scenario: package.json bin and exports become entry points
-- **WHEN** `package.json` declares a `bin` and an `exports` map pointing at project files
-- **THEN** those files are in the entry-point set
+- **WHEN** `package.json` contains `"bin": { "cli": "./bin/cli.js" }` and `"exports": { ".": "./src/index.ts" }`
+- **THEN** both `bin/cli.js` and `src/index.ts` are in the entry set
 
-#### Scenario: A transitively imported file is reachable
-- **WHEN** an entry point imports `./a` and `./a` imports `./b`
-- **THEN** both `./a` and `./b` are reachable
+#### Scenario: Config entry globs become entry points
+- **WHEN** `orcas.config` sets `entry: ['src/index.ts', 'bin/*.ts']`
+- **THEN** all matched files are in the entry set
 
-#### Scenario: An orphan file is not reachable
-- **WHEN** a project file is not on any import path from any entry point
-- **THEN** the file is reported as not reachable
+#### Scenario: Root-level config files become entry points automatically
+- **WHEN** `vite.config.ts` exists at the project root and matches `*.config.{ts,js,mjs,cjs}`
+- **THEN** `vite.config.ts` is added to the entry set without requiring user configuration
+
+#### Scenario: Nested config files are not auto-detected
+- **WHEN** a file `packages/foo/vite.config.ts` exists but the project root is the workspace root
+- **THEN** that nested config file is NOT added to the entry set by auto-detection
 
 ### Requirement: Test-file classification
 Sonar SHALL classify analyzed files as test files using the configured `tests` globs and expose this via `isTest(file)`. Test files SHALL remain in the model (so their imports count as consumption) in default mode, and SHALL be excluded from the analyzed set when `production` is enabled.
@@ -99,4 +103,61 @@ Sonar SHALL classify analyzed files as test files using the configured `tests` g
 #### Scenario: Production mode excludes test files
 - **WHEN** analysis runs with `production` enabled
 - **THEN** files matching the `tests` globs are absent from the analyzed file set
+
+### Requirement: CJS `require()` tracking in `ModuleInfo`
+Sonar SHALL capture CJS `require('literal')` calls during module parsing and expose them on `ModuleInfo` as `requires: readonly RequireBinding[]`. A `RequireBinding` holds the raw specifier string, the resolved in-project target path (or `null` when unresolvable or external), and the source location of the call. Only calls where the argument is a string literal or no-substitution template literal are captured; calls with dynamic/variable arguments are silently skipped.
+
+#### Scenario: A `require('pkg')` call is captured as a RequireBinding
+- **WHEN** a file contains `const x = require('lodash')`
+- **THEN** `ModuleInfo.requires` includes an entry with `specifier: 'lodash'` and `resolvedFile: null` (external package)
+
+#### Scenario: A destructured `require` is captured
+- **WHEN** a file contains `const { join } = require('path')`
+- **THEN** `ModuleInfo.requires` includes an entry with `specifier: 'path'`
+
+#### Scenario: A `require()` targeting a relative path resolves to an in-project file
+- **WHEN** a file contains `require('./utils')` and `utils.ts` exists in the project
+- **THEN** `ModuleInfo.requires` includes an entry with `resolvedFile: 'utils.ts'` (relative to `cwd`)
+
+#### Scenario: A dynamic `require(variable)` is not captured
+- **WHEN** a file contains `require(someVariable)` where the argument is not a string literal
+- **THEN** no `RequireBinding` is added to `ModuleInfo.requires` for that call
+
+#### Scenario: `require.resolve('pkg')` is not captured
+- **WHEN** a file contains `require.resolve('some-package')`
+- **THEN** no `RequireBinding` is added — `require.resolve` is a resolution helper, not an import
+
+#### Scenario: A file with no `require()` calls has an empty `requires` array
+- **WHEN** a file uses only ESM `import` declarations
+- **THEN** `ModuleInfo.requires` is an empty array
+
+### Requirement: `buildEdges` includes CJS require edges
+The module-graph edge builder SHALL add a directed edge from file A to file B when A contains `require('./b')` (or equivalent) and the specifier resolves to B within the project. This ensures reachability computation is correct for CJS projects.
+
+#### Scenario: A CJS file required by an entry point is reachable
+- **WHEN** entry point `index.js` contains `require('./utils')` and `utils.js` is in the project
+- **THEN** `utils.js` is reachable (not flagged as a dead file)
+
+#### Scenario: A CJS file required only by an unreachable file is also unreachable
+- **WHEN** orphan `a.js` contains `require('./b')` and neither `a.js` nor `b.js` are reachable from any entry point
+- **THEN** both `a.js` and `b.js` are unreachable
+
+### Requirement: Per-file dynamic import tracking
+The SemanticModel SHALL track which specific files contain non-literal dynamic `import()` expressions (where the specifier is not a string literal), and SHALL expose a per-file query `hasDynamicImportIn(file: string): boolean`. The existing `hasDynamicImport(): boolean` method SHALL be preserved and SHALL return `true` when any file in the project contains a non-literal dynamic import (equivalent to checking whether the per-file set is non-empty).
+
+#### Scenario: hasDynamicImportIn returns true for the file that has the dynamic import
+- **WHEN** file `src/router.ts` contains `import(routeName)` with a variable specifier
+- **THEN** `hasDynamicImportIn('src/router.ts')` returns `true`
+
+#### Scenario: hasDynamicImportIn returns false for files without dynamic imports
+- **WHEN** file `src/utils.ts` contains only static imports
+- **THEN** `hasDynamicImportIn('src/utils.ts')` returns `false`
+
+#### Scenario: hasDynamicImport() still returns true when any file has a non-literal import
+- **WHEN** at least one file in the project contains a non-literal dynamic import
+- **THEN** `hasDynamicImport()` returns `true` (backward-compatible behavior)
+
+#### Scenario: A literal dynamic import does not register as a non-literal dynamic import
+- **WHEN** a file contains `import('./utils')` with a string literal specifier
+- **THEN** `hasDynamicImportIn` does not record that file, and `hasDynamicImport()` is unaffected
 
